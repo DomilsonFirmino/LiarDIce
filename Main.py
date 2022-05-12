@@ -1,214 +1,311 @@
 import os
+import discord
 import random
-from datetime import datetime
-import discord #importar discor.py
 
-random.seed(datetime.now())
+class Node:
+  def __init__(self,data,next=None):
+    self.data = data
+    self.next = next
 
-#Variaveis
-#dictionaires
-playersIdToName = {}
-playersNamesDices = {}
-playersRemainDices = {}
-playerPlayOrder = {}
-qttOfDices =	{"1": 0,"2": 0,"3": 0,"4": 0,"5": 0,"6": 0 }
-#dictionaires
-#normalVariables
-rodadaAtual = 0 #conta as rodadas atuais
-apostaAtual = "" #qual a aposta atual
-apostaTotal = 0 #valor total da aposta
-jogadorAtual = "" #Qual jogador foi ultimo a jogar
-contaVez = 1 #De quem é a vez de jogar
-gameStarted = 0 #Se o jogo foi iniciado
-#normalVariables
-#Variaveis
+#concluido
+class Players:
+  def __init__(self,id):
+    self.id = id
+    self.dicesArray = []
+    self.dicesQuant = 5
+#concluido
+class LinkedList:
+  def __init__(self):
+    self.head = None
+    self.tail = None
 
-#function
-def verificarFormatoAposta(aposta):
-  if(len(aposta)<15):
-    return 0
-  primeiro = aposta[8:11].replace(" ", "")
-  ultimo = aposta[-1]
-  if (primeiro.isdigit() and int(primeiro)>0 and ultimo.isdigit() and int(ultimo)<7):
-    return 1
-  return 0
+  def addNode(self,data):
+    newNode = Node(data)
+    if (self.head == None):
+      self.head = newNode
+      self.head.next = self.head
+      self.tail = self.head
+      return
+    if (self.tail.next == self.head):
+      self.tail.next = newNode
+      self.tail = newNode
+      self.tail.next = self.head
+      return
+#concluido Sem methodo eliminar e listar so para nós
 
-def resetDices(dicesDict):
-  for x in dicesDict:
-    dicesDict[x] = 0
+class Game:
 
-def ContPlayersDices(playersNamesDices):
-  for x in playersNamesDices:
-    contDices(playersNamesDices[x])
+  instances = []
+  playersID = {}
+  gameStarted = 0
+  def __init__(self,lastPlayer = None):
+    self.List = LinkedList()
+    self.lastPlayer = lastPlayer
+    self.bet = "0 de 1"
+    self.betValue = 0
+    self.gameRound = 0
+    self.playerCount = 0
+    Game.instances.append(self) 
+  def checkLiar(self):
+    end = game.List.tail
+    current = game.List.head
+    numberofFaces = 0
+    while(True):
+      for y in current.data.dicesArray:
+        if y == self.bet2:
+          numberofFaces += 1
+      if (current.data.id == end.data.id):
+        break   
+      current = current.next
+    if numberofFaces >= self.bet1:
+      return 1 #Ele não mentiu
+    return 0 #Ele Mentiu
+
+  def checkBet(self,bet):
+    if len(bet) < 11:
+      return 1
+    betArray = bet.split(" ")
+    if betArray[1].isdigit()==False or betArray[3].isdigit()==False:
+      return 1 # bet format error
+    if int(betArray[3]) > 6 or int(betArray[3]) < 0:
+      return 2 # invalid dice number
+    self.bet1 = int(betArray[1])
+    self.bet2 = int(betArray[3])
+    total = self.bet1 * self.bet2
+    if total <= self.betValue:
+      return 3 #bet value lower than preview
+    self.bet = bet[5:]
+    self.betValue = total
+    return self.bet
     
-def contDices(diceString):
-  dices = diceString.replace(" ","")
-  for x in dices:
-    qttOfDices[x] += 1
-  
-def verificarValorAposta(aposta):
-  primeiro = aposta[8:11].replace(" ", "")
-  ultimo = aposta[-1]
-  return int(int(primeiro)*int(ultimo))
+  def addPlayer(self,id):
+    Game.playersID[id]=1
+    player = Players(id)
+    self.List.addNode(player)
+    self.playerCount += 1 
 
-def userName(message):
-  return str(message.id)
+  def resetValues(self):
+    self.lastPlayer = None
+    self.bet = "0 de 1"
+    self.betValue = 0
+  def playerDices(self):
+    #melhor codificar para não repetir na hora de enviar por Player
+    end = self.List.tail
+    current = self.List.head
+    if(self.List.head == None and self.List.tail == None):
+      print("lista esta Vazia")
+      return
+    while(True):
+      current.data.dicesArray = []
+      for y in range(current.data.dicesQuant):
+        current.data.dicesArray.append(random.randrange(1,7))
+      if (current.data.id == end.data.id):
+        break   
+      current = current.next 
+  def newRound(self):
+    self.gameRound = self.gameRound + 1
+    self.playerDices()
+    return self.gameRound
+  def updatePlayer(self):
+    self.lastPlayer = self.currentPlayer
+    self.currentPlayer = self.currentPlayer.next
+  def StartGame(self):
+    self.currentPlayer = self.List.head
+    Game.gameStarted = 1
+    return self.newRound()
+  def ContinueGame(self):
+    return self.newRound()
+  def deletePlayer(self,id):
+    delete = self.List.head
+    #se a lista for esvaziada
+    if(self.List.head.data.id == self.List.tail.data.id):
+      self.List.head = None
+      self.List.tail = None
+      return
+      
+    #Se o elemento a ser eliminado for o primeiro  
+    if(self.List.head.data.id == id):
+      self.List.head = delete.next
+      self.List.tail.next = self.List.head
+      delete = None
+      self.playerCount -= 1
+      return
 
-def randomDices(DiceAmoung):
-  dices = ""
-  numberAmoung=int(DiceAmoung)
-  for x in range(numberAmoung):
-    diceValue = random.randrange(1,7)
-    dices = dices+" "+str(diceValue);
-  return dices
-  
-def playersDicesDistribution(playersDice,DiceAmoung):
-  for x in playersDice:
-    playersDice[x] = 0
-    playersDice[x] = randomDices(DiceAmoung[x])
+    prev = delete
+    end = self.List.tail
+    while(True):
+      if(delete.data.id == id):
+        break
+      prev = delete
+      delete = delete.next
+      if (delete.data.id == end.next.data.id):
+        return
+    if (delete.data.id == end.data.id):
+      prev.next = self.List.tail.next
+      end = None
+      self.List.tail = prev
+      self.playerCount -= 1
+      return
+
+    prev.next = delete.next
+    delete = None   
+    self.playerCount -= 1
+    return
+ 
+  def printList(self):
+    end = self.List.tail
+    current = self.List.head
+    if(self.List.head == None and self.List.tail == None):
+      print("lista esta Vazia")
+      return
+    while(True):
+      print(f"O Atual é {current.data.id}")
+      print(f"o Proximo valor {current.next.data.id}")
+      print()
+      print()
+      if (current.data.id == end.data.id):
+        return
+      current = current.next
+
+  def printPlayerDicesArray(self):
+    end = self.List.tail
+    current = self.List.head
+    if(self.List.head == None and self.List.tail == None):
+      print("lista esta Vazia")
+      return
+    while(True):
+      print(f"O Jogador {current.data.id}")
+      print(f"Tem os dados {current.data.dicesArray}")
+      print()
+      print()
+      if (current.data.id == end.data.id):
+        return 
+      current = current.next
+
     
-def rodada(playersDice,DiceAmoung):
-  global rodadaAtual
-  rodadaAtual+=1
-  playersDicesDistribution(playersDice,DiceAmoung)
-  return rodadaAtual
-  
-#function
-
-#COMNADOS
-#!desafiar
-#!aceitar
-#!iniciar
-#!apostar
-#!mentiroso
-#!help
-#!Como jogar
-
-#iniciar conexao com o discord
-
-client = discord.Client() #Library discord.py
 
 
+
+client = discord.Client()
 @client.event
-async def on_ready(): #Se o bot estiver pronto a ser usado
-  print("we have logged in as {0.user}" .format (client))
+async def on_ready():
+  print("we have logged in as {0.user}".format(client))
 
 @client.event
 async def on_message(message):
-  global playersIdToName
-  global rodadaAtual
-  global apostaAtual
-  global jogadorAtual
-  global contaVez
-  global gameStarted
-  global apostaTotal
+  
+  if message.author == client.user:
+    return 
 
-  if message.author == client.user: #ignorar bot messages
+  if message.content.startswith("$challenge") and len(Game.instances) == 0:
+    if(not message.author.id in Game.playersID):
+      global game
+      game = Game()
+      game.addPlayer(message.author.id)
+      await message.channel.send(f"<@{message.author.id}> As challenged You")
+      return
+    else:
+      await message.channel.send(f"<@{message.author.id}> You are in game already")
+      return
+  
+  if message.content.startswith("$accept") and game.gameStarted == 0 and len(Game.instances) > 0:
+    if(not message.author.id in Game.playersID):
+      game.addPlayer(message.author.id)
+      await message.channel.send(f"<@{message.author.id}> As accepted Yours challenge")
+      return
+    else:
+      await message.channel.send(f"<@{message.author.id}> You are in game already")
+      return
+  
+  if message.content.startswith("$start") and Game.gameStarted == 0 and game.playerCount > 1 and len(Game.instances) > 0:
+    await message.channel.send(f"Round {game.StartGame()}")
+    #Send dices no player in a private message
+    end = game.List.tail
+    current = game.List.head
+    while(True):
+      current.data.dicesArray = []
+      for y in range(current.data.dicesQuant):
+        current.data.dicesArray.append(random.randrange(1,7))
+      user = await client.fetch_user(current.data.id)
+      await user.send(f"Your dices are {current.data.dicesArray}")
+      if (current.data.id == end.data.id):
+        break   
+      current = current.next 
+    return
+  if message.content.startswith("$bet") and Game.gameStarted==1:
+    if message.author.id != game.currentPlayer.data.id:
+      await message.channel.send(f"Its not your turn <@{message.author.id}>")
+      await message.channel.send(f"Its <@{game.currentPlayer.data.id}>Turn")
+      return
+    gameBet = game.checkBet(message.content)
+    if gameBet == 1:
+      await message.channel.send(f"Bet Format Error, try something like {game.bet} ")
+      return
+    if gameBet == 2:
+      await message.channel.send(f"Dice Face Value is invalid try between 1 and 6")
+      return
+    if gameBet == 3:
+      await message.channel.send(f"Bet Value must be Higher than {game.bet} ")
+      return
+    await message.channel.send(f"<@{game.currentPlayer.data.id}> Betted {game.bet}")
+    await message.channel.send(f"You turn to bet<@{game.currentPlayer.next.data.id}>")
+    game.updatePlayer()
     return
 
-  if (message.content.startswith("$desafiar")) and gameStarted == 0:
-    idPlayer = userName(message.author)
-    playersNamesDices[idPlayer] = ""
-    playersRemainDices[idPlayer] = 5
-    playerPlayOrder[len(playersNamesDices)] = idPlayer
-    playersIdToName[idPlayer] = message.author.name
-    await message.channel.send("EU TE DESAFIO PARA UM DUELO")
-
-  if (message.content.startswith("$aceitar")) and gameStarted == 0:
-    idPlayer = userName(message.author)
-    playersNamesDices[idPlayer] = ""
-    playersRemainDices[idPlayer] = 5
-    playerPlayOrder[len(playersNamesDices)] = idPlayer
-    playersIdToName[idPlayer] = message.author.name
-    await message.channel.send("EU ACEITO O DUELO")
-
-  if (message.content.startswith("$iniciar")) and gameStarted == 0 and len(playersNamesDices)> 1:
-    gameStarted = 1
-    etapa = rodada(playersNamesDices,playersRemainDices)
-    await message.channel.send("A ORDEM É")
-    for x in playerPlayOrder:
-      await message.channel.send(f"O {int(x)} - "+f"<@{playerPlayOrder[x]}>")
-    for x in playersNamesDices:
-      user = await client.fetch_user(x)
-      await user.send(f"Os teus dados {playersNamesDices[x]}")
-    await message.channel.send(f"RODADA {etapa}")
-    
-  if (message.content.startswith("$apostar")) and gameStarted == 1:
-    if(playerPlayOrder[contaVez] != userName(message.author)):
-      await message.channel.send("Não é a tua vez")
-      await message.channel.send(f"É a vez do <@{playerPlayOrder[contaVez]}>")
-      return 
-
-    if verificarFormatoAposta(message.content) == 0:
-      await message.channel.send("Formato da Aposta está errado")
-      return
-
-    novaAposta = verificarValorAposta(message.content)
-    if  novaAposta <= apostaTotal :
-      await message.channel.send("O Valor da Aposta precisa se maior que a aposta anterior")
-      return
-    
-    apostaAtual = message.content
-    jogadorAtual = userName(message.author)
-    apostaTotal = novaAposta
-    
-    if (contaVez == len(playersNamesDices)):
-      contaVez = 1
+  if message.content.startswith("$liar") and Game.gameStarted==1 and game.lastPlayer != None:
+    end = game.List.tail
+    current = game.List.head
+    while(True):
+      await message.channel.send(f"The player <@{current.data.id}> have this dices{current.data.dicesArray}")
+      if (current.data.id == end.data.id):
+        break   
+      current = current.next
+    liar = game.checkLiar()
+    if(liar == 1):
+      await message.channel.send(f"<@{game.lastPlayer.data.id}> **You are a saint**")
+      game.currentPlayer.data.dicesQuant -= 1
+      #Check if the dice reduction reached 0
+      if (game.currentPlayer.data.dicesQuant==0):
+        Game.playersID.pop(game.currentPlayer.data.id)
+        game.deletePlayer(game.currentPlayer.data.id)
+        #If current player = 0 then last player win
+        if (len(Game.playersID)==1):
+          await message.channel.send(f"YOU WIN <@{game.lastPlayer.data.id}>")
     else:
-      contaVez += 1
-    await message.channel.send(f"<@{message.author.id}>")
-    await message.channel.send("Apostou "+f"**{apostaAtual[9:]}**")
-    await message.channel.send("Agora é a vez do "+f"<@{playerPlayOrder[contaVez]}>")
-
-  if (message.content.startswith("$mentiroso")) and gameStarted == 1:
-    
-    if(playerPlayOrder[contaVez] != userName(message.author)):
-      await message.channel.send("Não é a tua vez")
-      await message.channel.send(f"É a vez do <@{playerPlayOrder[contaVez]}>")
-      return 
-    
-    for x in playersNamesDices:
-      await message.channel.send(playersNamesDices[x])
-  
-    ContPlayersDices(playersNamesDices)
-    primeiro = apostaAtual[8:11].replace(" ", "")
-    ultimo = apostaAtual[-1]
-    if(qttOfDices[(ultimo)] >= int(primeiro)):
-      await message.channel.send(f"<@{jogadorAtual}> Não Mentiu")
-      currentPlayer = userName(message.author)
-      playersRemainDices[currentPlayer] = playersRemainDices[currentPlayer] - 1
-      if (playersRemainDices[currentPlayer] == 0):
-        playersRemainDices.pop(currentPlayer)
-    else:
-      await message.channel.send(f"<@{jogadorAtual}> É um Mentiroso")
-      playersRemainDices[jogadorAtual] = playersRemainDices[jogadorAtual] - 1
-      if (playersRemainDices[jogadorAtual] == 0):
-        playersRemainDices.pop(jogadorAtual)
-
-    if(len(playersRemainDices) == 1):
-      for x in playersRemainDices:
-        await message.channel.send(f"O vencedor é<@{x}>")
-      gameStarted = 0
-      return
-    
-    apostaAtual = ""
-    apostaTotal = 0 
-    resetDices(qttOfDices)
-    etapa = rodada(playersNamesDices,playersRemainDices)
-    for x in playersNamesDices:
-      user = await client.fetch_user(x)
-      await user.send(f"Os teus dados {playersNamesDices[x]}")
-    await message.channel.send(f"RODADA {etapa}")
-  if (message.content.startswith("$help")):
-    await message.channel.send("$desafiar")
-    await message.channel.send("$aceitar")
-    await message.channel.send("$iniciar")
-    await message.channel.send("$apostar 3 de 5")
-    await message.channel.send("$mentiroso")
-    await message.channel.send("$placar")
-
-  if (message.content.startswith("$placar")) :
-    for x in playersRemainDices:
-      await message.channel.send(f" O @<{x}> tem "+f"{playersRemainDices[x]}")
+      await message.channel.send(f"<@{game.lastPlayer.data.id}> You **LIAR**")  
+      game.lastPlayer.data.dicesQuant -= 1
+      #Check if the dice reduction reached 0
+      if (game.lastPlayer.data.dicesQuant==0):
+        Game.playersID.pop(game.currentPlayer.data.id)
+        game.deletePlayer(game.lastPlayer.data.id)
+        #If Last player = 0 then last player win
+        if (len(Game.playersID)==1):
+          await message.channel.send(f"YOU WIN <@{game.currentPlayer.data.id}>")
+          Game.instances = None
+          return
+    #reset Values
+    game.resetValues()
+    #start New Round
+    await message.channel.send(f"Round {game.ContinueGame()}")
+    #Send dices no player in a private message
+    end = game.List.tail
+    current = game.List.head
+    while(True):
+      current.data.dicesArray = []
+      for y in range(current.data.dicesQuant):
+        current.data.dicesArray.append(random.randrange(1,7))
+      user = await client.fetch_user(current.data.id)
+      await user.send(f"Your dices are {current.data.dicesArray}")
+      if (current.data.id == end.data.id):
+        break   
+      current = current.next 
+    return
+  if message.content.startswith("$help"):
+    await message.channel.send("$challenge - desafia")
+    await message.channel.send("$accept aceita desafio")
+    await message.channel.send("$Start - inicia o jogo")
+    await message.channel.send("$bet - para fazer a aposta")
+    await message.channel.send("$liar - chamar jogador de mentiroso")
+                              
 my_secret = os.environ['chave']
 client.run(my_secret)
