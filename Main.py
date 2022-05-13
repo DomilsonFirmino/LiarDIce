@@ -7,13 +7,13 @@ class Node:
     self.data = data
     self.next = next
 
-#concluido
+
 class Players:
   def __init__(self,id):
     self.id = id
     self.dicesArray = []
     self.dicesQuant = 5
-#concluido
+
 class LinkedList:
   def __init__(self):
     self.head = None
@@ -197,7 +197,7 @@ async def on_message(message):
   if message.author == client.user:
     return 
 
-  if message.content.startswith("$challenge") and len(Game.instances) == 0:
+  if message.content.startswith("$challenge") or message.content.startswith("$desafiar") and len(Game.instances) == 0:
     if(not message.author.id in Game.playersID):
       global game
       game = Game()
@@ -208,7 +208,7 @@ async def on_message(message):
       await message.channel.send(f"<@{message.author.id}> You are in game already")
       return
   
-  if message.content.startswith("$accept") and game.gameStarted == 0 and len(Game.instances) > 0:
+  if message.content.startswith("$accept") or message.content.startswith("$aceitar") and game.gameStarted == 0 and len(Game.instances) > 0:
     if(not message.author.id in Game.playersID):
       game.addPlayer(message.author.id)
       await message.channel.send(f"<@{message.author.id}> As accepted Yours challenge")
@@ -217,7 +217,7 @@ async def on_message(message):
       await message.channel.send(f"<@{message.author.id}> You are in game already")
       return
   
-  if message.content.startswith("$start") and Game.gameStarted == 0 and game.playerCount > 1 and len(Game.instances) > 0:
+  if message.content.startswith("$start") or message.content.startswith("$começar") and Game.gameStarted == 0 and game.playerCount > 1 and len(Game.instances) > 0:
     await message.channel.send(f"Round {game.StartGame()}")
     #Send dices no player in a private message
     end = game.List.tail
@@ -300,12 +300,52 @@ async def on_message(message):
         break   
       current = current.next 
     return
-  if message.content.startswith("$help"):
-    await message.channel.send("$challenge - desafia")
-    await message.channel.send("$accept aceita desafio")
-    await message.channel.send("$Start - inicia o jogo")
-    await message.channel.send("$bet - para fazer a aposta")
-    await message.channel.send("$liar - chamar jogador de mentiroso")
-                              
+  if message.content.startswith("$help") or message.content.startswith("$ajuda"):
+    await message.channel.send("$ challenge/desafiar")
+    await message.channel.send("$ accept/aceitar")
+    await message.channel.send("$ start/começar")
+    await message.channel.send("$bet")
+    await message.channel.send("$liar")
+    await message.channel.send("$ how to play/como jogar")
+    return
+  if message.content.startswith("$score") or message.content.startswith("$placar"):
+    end = game.List.tail
+    current = game.List.head
+    while(True):
+
+      await message.channel.send(f"<@{current.data.id}> have {current.data.dicesQuant}")
+      if (current.data.id == end.data.id):
+        break   
+      current = current.next 
+    return
+  if message.content.startswith("$how to play") or message.content.startswith("$como jogar"):
+    user = await client.fetch_user(message.author.id)
+    await user.send(
+    """
+    **Liar's Dice - how the game work**
+      
+Liar's Dice is a betting game, consistis in 2 or more player betting the quantity of repetition of a dices face. you can heiter bet or call the preview player as a Liar, reveling how dices to now if it is telling the truth.
+You win the round if you call a person liar ou you where called liar but told the truth
+If you lied you loose a dice, its keep going until you loose all you dices and only one players remain
+
+**How to use the bot**
+      
+$challenge for starting the game and wait for more people tu $accept the challenge
+$accept is for you to participat in the game, can only be used after $challenge command
+$start starts the game with the first Round inicialization
+
+After the start the first player start the game by betting
+    
+$bet is for you to bet  => $bet 3 de 5 mean 3 dices of face 5
+
+Then the next player must choose: $bet a new value or call the preview player a $liar
+If you do a new $bet the next player have the same choice as you $bet/$liar until someone choose $liar
+If you choose $liar, the dices of all players are revealed if amoung the dices are more of igual number of dices of the face the preview player said that existed you loose otherwise you win.
+
+The player who lost looses one dices, when they loose all 5 dices it is removed from the game
+
+After this a new round start, from who saided $liar, you play until only one player remain""")
+    return                       
+
 my_secret = os.environ['chave']
 client.run(my_secret)
